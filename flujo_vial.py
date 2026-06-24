@@ -1,11 +1,10 @@
 import numpy as np
 import random
 import time
-import pyvista as pv
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-class carro:
+class Carro:
 	def __init__(self, velocidad):
 		self.v = int(velocidad)
 
@@ -74,7 +73,9 @@ cantidad_carros = 100
 posiciones = random.sample(range(len(carretera)), cantidad_carros)
 
 for posicion in posiciones:
-	carretera[posicion] = carro(velocidad=random.randint(v[0], v[-1]))
+	carretera[posicion] = Carro(velocidad=random.randint(v[0], v[-1]))
+
+t0 = time.perf_counter()
 
 for n in range(int(t_final/dt) + 1):
 	
@@ -93,9 +94,12 @@ for n in range(int(t_final/dt) + 1):
 	
 	carretera = actualizar(carretera, v_max)
 	
+t1 = time.perf_counter()
 	
 for i, snap in enumerate(snapshots):
 	print(i, np.sum(snap))
+
+print(t1-t0)
 
 fig, ax = plt.subplots(figsize=(10,2))
 
@@ -130,4 +134,5 @@ plt.show()
 plt.imshow(snapshots, aspect="auto", cmap="gray_r")
 plt.xlabel("posicion")
 plt.ylabel("tiempo")
+
 plt.show()
