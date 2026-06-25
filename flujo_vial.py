@@ -59,7 +59,7 @@ def actualizar(carretera, v_max):
 carretera = [0] * 1000
 
 dt = 1.0
-t_final = 500
+t_final = 10000
 tiempos = []
 
 intervalo_snapshot = 1
@@ -68,16 +68,23 @@ snapshots = []
 v = [0, 1, 2, 3, 4, 5]
 v_max = int(v[-1])
 
-cantidad_carros = 100
+#cantidad_carros = 100
 
-posiciones = random.sample(range(len(carretera)), cantidad_carros)
+#posiciones = random.sample(range(len(carretera)), cantidad_carros)
 
-for posicion in posiciones:
-	carretera[posicion] = Carro(velocidad=random.randint(v[0], v[-1]))
+#for posicion in posiciones:
+	#carretera[posicion] = Carro(velocidad=random.randint(v[0], v[-1]))
 
 t0 = time.perf_counter()
 
 for n in range(int(t_final/dt) + 1):
+	
+	if carretera[0] == 0:
+		carretera[0] = Carro(velocidad=0)
+	
+	for m in range(len(carretera)-6,len(carretera)):
+		if carretera[m] != 0:
+			carretera[m] = 0
 	
 	if n % intervalo_snapshot == 0:
 		
@@ -105,7 +112,7 @@ fig, ax = plt.subplots(figsize=(10,2))
 
 linea = ax.imshow(
 	[snapshots[0]],
-	cmap="gray_r",
+	cmap="viridis",
 	aspect="auto",
 	interpolation="nearest",
 	vmin=0,
@@ -118,7 +125,7 @@ ax.set_title("Simulacion")
 
 def animar(i):
 	linea.set_data([snapshots[i]])
-	ax.set_title(f"Tiempo: {tiempos[i]:.1f}")
+	ax.set_title(tiempos[i])
 	return [linea]
 	
 ani = animation.FuncAnimation(
@@ -131,7 +138,7 @@ ani = animation.FuncAnimation(
 
 plt.show()
 
-plt.imshow(snapshots, aspect="auto", cmap="gray_r")
+plt.imshow(snapshots, aspect="auto", cmap="viridis")
 plt.xlabel("posicion")
 plt.ylabel("tiempo")
 
