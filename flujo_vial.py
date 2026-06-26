@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import argparse
 import csv
 import os
 import random
@@ -96,134 +98,163 @@ def actualizar(carretera, v_max, p, medicion):
 		
 	return nueva_carretera, flujo_instantaneo
 
-	# Datos de cantidad de Carros
-for repeticiones in range(0, 10):
-	print(repeticiones)
-	for cantidad_carros in [50, 100, 150, 200, 250, 300, 350, 400, 550, 600, 750, 800]:
-		print(cantidad_carros)
-		# Datos de la carretera
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--cantidad_carros", type=int)
+
+args = parser.parse_args()
+
+cantidad = args.cantidad_carros
+
+
+# Datos de cantidad de Carros
+
+cantidad_carros = cantidad
+
+# Datos de la carretera
 				
-		L = 1000	
-		carretera = [0] * 1000
+L = 1000	
+carretera = [0] * 1000
 
-		# Datos del tiempo
+# Datos del tiempo
 
-		dt = 1.0
-		t_final = 50*L
-		t_relajacion = 10 * L
-		tiempos = []
+dt = 1.0
+t_final = 50*L
+t_relajacion = 10 * L
+tiempos = []
 
-		# Datos de snapshots
+# Datos de snapshots
 
-		intervalo_snapshot = 1
-		snapshots = []
+intervalo_snapshot = 1
+snapshots = []
 
-		# Datos de velocidades
+# Datos de velocidades
 
-		v_max = 5
-		v = list(range(v_max + 1))
+v_max = 5
+v = list(range(v_max + 1))
 
-		# Datos de densidad y flujo
+# Datos de densidad y flujo
 
-		densidad = cantidad_carros / L
-		densidad_aproximada = 0
-		flujo_total = 0
-		T = 1000
-		medicion = 100
+densidad = cantidad_carros / L
+densidad_aproximada = 0
+flujo_total = 0
+T = 1000
+medicion = 100
 
-		# Dato de evento aleatorio
+# Dato de evento aleatorio
 
-		p = 0.5
+p = 0.5
 
-		# Generación de autos de densidad constante (Carretera Circular)
+# Generación de autos de densidad constante (Carretera Circular)
 
-		posiciones = random.sample(range(len(carretera)), cantidad_carros)
+posiciones = random.sample(range(len(carretera)), cantidad_carros)
 
-		for posicion in posiciones:
-			carretera[posicion] = Carro(velocidad=0)
+for posicion in posiciones:
+	carretera[posicion] = Carro(velocidad=0)
 
-		#t0 = time.perf_counter()
+t0 = time.perf_counter()
 
-		for n in range(int(t_final/dt) + 1):
+for n in range(int(t_final/dt) + 1):
 		
-			#if carretera[0] == 0:
-				#carretera[0] = Carro(velocidad=0)
+	#if carretera[0] == 0:
+		#carretera[0] = Carro(velocidad=0)
 		
-			#for m in range(len(carretera)-6,len(carretera)):
-				#if carretera[m] != 0:
-					#carretera[m] = 0
+	#for m in range(len(carretera)-6,len(carretera)):
+		#if carretera[m] != 0:
+			#carretera[m] = 0
 		
-			#print(n)
+	#print(n)
 				
-			if (n % intervalo_snapshot == 0) and (n > 10*L):
+	if (n % intervalo_snapshot == 0) and (n > 10*L):
 			
-				posiciones = []
+		posiciones = []
 			
-				for celda in carretera:
-					if celda != 0:
-						posiciones.append(1)
-					else:
-						posiciones.append(0)
+		for celda in carretera:
+			if celda != 0:
+				posiciones.append(1)
+			else:
+				posiciones.append(0)
 				
-				snapshots.append(np.copy(posiciones))
-				tiempos.append(n*dt)
+		snapshots.append(np.copy(posiciones))
+		tiempos.append(n*dt)
 		 
-			if t_relajacion < n <= t_relajacion + T:
-				if carretera[medicion] != 0:
-					densidad_aproximada += 1
+	if t_relajacion < n <= t_relajacion + T:
+		if carretera[medicion] != 0:
+			densidad_aproximada += 1
 			
-				flujo_total += flujo_instantaneo
+		flujo_total += flujo_instantaneo
 			
 		
-			carretera, flujo_instantaneo = actualizar(carretera, v_max, p, medicion)
+	carretera, flujo_instantaneo = actualizar(carretera, v_max, p, medicion)
 		
-		#t1 = time.perf_counter()
+t1 = time.perf_counter()
 		
-		#for i, snap in enumerate(snapshots):
-			#print(i, np.sum(snap))
+#for i, snap in enumerate(snapshots):
+	#print(i, np.sum(snap))
 
-		#print("Tiempo: ",t1-t0)
+print("Cantidad de carros: ", cantidad_carros)
 
-		#print("Densidad Real: ", densidad)
+print("Tiempo: ",t1-t0)
 
-		#print("Densidad Aproximada: ", densidad_aproximada/T)
+print("Densidad Real: ", densidad)
 
-		#print("Flujo Total: ", flujo_total/T)
+print("Densidad Aproximada: ", densidad_aproximada/T)
 
-		guardar_datos("prueba_4.csv", cantidad_carros, densidad, densidad_aproximada/T, flujo_total/T)
+print("Flujo Total: ", flujo_total/T)
 
-		#fig, ax = plt.subplots(figsize=(10,2))
+guardar_datos("prueba_5.csv", cantidad_carros, densidad, densidad_aproximada/T, flujo_total/T)
 
-		#linea = ax.imshow(
-			#[snapshots[0]],
-			#cmap="viridis",
-			#aspect="auto",
-			#interpolation="nearest",
-			#vmin=0,
-			#vmax=1
-			#)
+fig, ax = plt.subplots(figsize=(10,2))
 
-		#ax.set_xlabel("posicion")
-		#ax.set_yticks([])
-		#ax.set_title("Simulacion")
+linea = ax.imshow(
+	[snapshots[0]],
+	cmap="viridis",
+	aspect="auto",
+	interpolation="nearest",
+	vmin=0,
+	vmax=1
+	)
 
-		#def animar(i):
-			#linea.set_data([snapshots[i]])
-			#ax.set_title(tiempos[i])
-			#return [linea]
+ax.set_xlabel("posicion")
+ax.set_yticks([])
+ax.set_title("Simulacion")
+
+def animar(i):
+	linea.set_data([snapshots[i]])
+	ax.set_title(tiempos[i])
+	return [linea]
 		
-		#ani = animation.FuncAnimation(
-			#fig,
-			#animar,
-			#frames=len(snapshots),
-			#interval=100,
-			#blit=False
-			#)
+ani = animation.FuncAnimation(
+	fig,
+	animar,
+	frames=len(snapshots),
+	interval=100,
+	blit=False
+	)
 
-		#plt.show()
+plt.show()
 
-		#plt.imshow(np.array(snapshots[:500]), aspect="auto", cmap="viridis")
-		#plt.xlabel("posicion")
-		#plt.ylabel("tiempo")
+plt.imshow(np.array(snapshots[:500]), aspect="auto", cmap="viridis")
+plt.xlabel("posicion")
+plt.ylabel("tiempo")
 
-		#plt.show()
+plt.show()
+
+#df = pd.read_csv("prueba_4.csv")
+
+#densidad_real = df["densidad_real"].tolist()
+#flujo_promedio = df["flujo_promedio"].tolist()
+
+#plt.scatter(densidad_real, flujo_promedio)
+
+#plt.show()
+
+
+		
+	
+	
+	
+	
+	
+
+

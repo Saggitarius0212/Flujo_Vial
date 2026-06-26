@@ -3,6 +3,7 @@
 #include <vector>
 #include <omp.h>
 #include <random>
+#include <range>
 
 // 
 
@@ -43,6 +44,7 @@ int contar_distancia_cpp(int celda, std::vector<int>& carretera){
 	
 	return distancia;
 }
+
 
 
 
