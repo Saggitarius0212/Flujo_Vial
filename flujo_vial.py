@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pathlib import Path
 import argparse
 import csv
 import os
@@ -7,14 +8,19 @@ import random
 import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import trafico as tf
 
 # Guardar datos de simulaciones
 
-def guardar_datos(nombre, cantidad, densidad_r, densidad_a, flujo_total):
+def guardar_datos(cantidad, densidad_r, densidad_a, flujo_total):
 	
-	archivo_existe = os.path.isfile(nombre)
+	os.makedirs("resultados", exist_ok=True)
 	
-	with open(nombre, "a", newline="") as archivo:
+	ruta = os.path.join("resultados", f"cantidad_carros_{cantidad}.csv")
+	
+	archivo_existe = os.path.isfile(f"cantidad_carros_{cantidad}.csv")
+	
+	with open(ruta, "a", newline="") as archivo:
 		escritor = csv.writer(archivo)
 		
 		if not archivo_existe:
@@ -32,79 +38,24 @@ def guardar_datos(nombre, cantidad, densidad_r, densidad_a, flujo_total):
 			flujo_total
 		])
 
-# Definir objeto Carro
+# Definir velocidad en lista con velocidad real
 
-class Carro:
-	def __init__(self, velocidad):
-		self.v = int(velocidad)
+def velocidad(velocidad_real):
+	
+	velocidad_carretera = velocidad_real + 1
+	return velocidad_carretera
 
-# Definir evento aleatorio
-
-def evento(p):
-	n = (random.random() < p)
-	return n
-	
-# Contar espacios vacíos frente a un carro
-		
-def contar_distancia(celda, carretera):
-	distancia = 0
-	n = len(carretera)
-	
-	for espacio in range(1,n):
-		siguiente = (celda + espacio) % n
-		
-		if carretera[siguiente] == 0:
-			distancia += 1
-		else:
-			break
-	
-	return distancia
-
-# Actualizar Carros
-	
-def actualizar(carretera, v_max, p, medicion):
-	n = len(carretera)
-	
-	carros = []
-	
-	for i, celda in enumerate(carretera):
-		if celda != 0:
-			carros.append((i,celda))
-	
-	for i, celda in carros:
-		distancia = contar_distancia(i, carretera)
-			
-		if (celda.v < v_max) and (distancia > celda.v):
-			celda.v += 1
-			
-		if (distancia <= celda.v):
-			celda.v = distancia
-				
-		if evento(p) and (celda.v > 0):
-			celda.v -= 1
-			
-	nueva_carretera = [0] * n
-	flujo_instantaneo = 0
-		
-	for i, celda in carros:
-		indice_nuevo = (i + celda.v) % n
-		
-		if celda.v > 0:
-			posiciones_recorridas = [(i + paso) % n for paso in range(1, celda.v + 1)]
-			if medicion in posiciones_recorridas:
-				flujo_instantaneo += 1
-		
-		nueva_carretera[indice_nuevo] = celda
-		
-	return nueva_carretera, flujo_instantaneo
+# Datos de simulación simultánea
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--cantidad_carros", type=int)
+parser.add_argument("--hilos", type=int)
 
 args = parser.parse_args()
 
 cantidad = args.cantidad_carros
+hilos = args.hilos
 
 
 # Datos de cantidad de Carros
@@ -114,7 +65,7 @@ cantidad_carros = cantidad
 # Datos de la carretera
 				
 L = 1000	
-carretera = [0] * 1000
+carretera = np.zeros(L, dtype=np.int32)
 
 # Datos del tiempo
 
@@ -125,12 +76,12 @@ tiempos = []
 
 # Datos de snapshots
 
-intervalo_snapshot = 1
+intervalo_snapshot = 0
 snapshots = []
 
 # Datos de velocidades
 
-v_max = 5
+v_max = velocidad(5)
 v = list(range(v_max + 1))
 
 # Datos de densidad y flujo
@@ -140,6 +91,7 @@ densidad_aproximada = 0
 flujo_total = 0
 T = 1000
 medicion = 100
+flujo_instantaneo = 0
 
 # Dato de evento aleatorio
 
@@ -150,7 +102,7 @@ p = 0.5
 posiciones = random.sample(range(len(carretera)), cantidad_carros)
 
 for posicion in posiciones:
-	carretera[posicion] = Carro(velocidad=0)
+	carretera[posicion] = velocidad(0)
 
 t0 = time.perf_counter()
 
@@ -164,8 +116,10 @@ for n in range(int(t_final/dt) + 1):
 			#carretera[m] = 0
 		
 	#print(n)
+		
+	flujo_instantaneo = tf.actualizar(carretera, v_max, p, medicion, hilos)
 				
-	if (n % intervalo_snapshot == 0) and (n > 10*L):
+	if (intervalo_snapshot != 0) and (n > 10*L) and (n % intervalo_snapshot == 0):
 			
 		posiciones = []
 			
@@ -177,15 +131,13 @@ for n in range(int(t_final/dt) + 1):
 				
 		snapshots.append(np.copy(posiciones))
 		tiempos.append(n*dt)
-		 
+		
 	if t_relajacion < n <= t_relajacion + T:
 		if carretera[medicion] != 0:
 			densidad_aproximada += 1
 			
 		flujo_total += flujo_instantaneo
-			
-		
-	carretera, flujo_instantaneo = actualizar(carretera, v_max, p, medicion)
+
 		
 t1 = time.perf_counter()
 		
@@ -202,43 +154,45 @@ print("Densidad Aproximada: ", densidad_aproximada/T)
 
 print("Flujo Total: ", flujo_total/T)
 
-guardar_datos("prueba_5.csv", cantidad_carros, densidad, densidad_aproximada/T, flujo_total/T)
+guardar_datos(cantidad_carros, densidad, densidad_aproximada/T, flujo_total/T)
 
-fig, ax = plt.subplots(figsize=(10,2))
+if (intervalo_snapshot != 0):
 
-linea = ax.imshow(
-	[snapshots[0]],
-	cmap="viridis",
-	aspect="auto",
-	interpolation="nearest",
-	vmin=0,
-	vmax=1
-	)
+	fig, ax = plt.subplots(figsize=(10,2))
 
-ax.set_xlabel("posicion")
-ax.set_yticks([])
-ax.set_title("Simulacion")
+	linea = ax.imshow(
+		[snapshots[0]],
+		cmap="viridis",
+		aspect="auto",
+		interpolation="nearest",
+		vmin=0,
+		vmax=1
+		)
 
-def animar(i):
-	linea.set_data([snapshots[i]])
-	ax.set_title(tiempos[i])
-	return [linea]
+	ax.set_xlabel("posicion")
+	ax.set_yticks([])
+	ax.set_title("Simulacion")
+
+	def animar(i):
+		linea.set_data([snapshots[i]])
+		ax.set_title(tiempos[i])
+		return [linea]
 		
-ani = animation.FuncAnimation(
-	fig,
-	animar,
-	frames=len(snapshots),
-	interval=100,
-	blit=False
-	)
+	ani = animation.FuncAnimation(
+		fig,
+		animar,
+		frames=len(snapshots),
+		interval=100,
+		blit=False
+		)
 
-plt.show()
+	plt.show()
 
-plt.imshow(np.array(snapshots[:500]), aspect="auto", cmap="viridis")
-plt.xlabel("posicion")
-plt.ylabel("tiempo")
+	plt.imshow(np.array(snapshots[:500]), aspect="auto", cmap="viridis")
+	plt.xlabel("posicion")
+	plt.ylabel("tiempo")
 
-plt.show()
+	plt.show()
 
 #df = pd.read_csv("prueba_4.csv")
 
