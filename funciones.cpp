@@ -36,7 +36,14 @@ int contar_distancia_cpp(int celda, int* carretera, int n){
 	return distancia;
 }
 
-int actualizar(py::array_t<int> carretera_py, int v_max, double p, int medicion, int hilos){
+int actualizar(py::array_t<int> carretera_py,
+		int v_max,
+		double p,
+		int medicion,
+		int semilla,
+		int paso,
+		int hilos
+		){
 
 	py::buffer_info carretera_b = carretera_py.request();
 	int* carretera = static_cast<int*>(carretera_b.ptr);
@@ -54,15 +61,22 @@ int actualizar(py::array_t<int> carretera_py, int v_max, double p, int medicion,
 	
 	#pragma omp parallel num_threads(hilos)
 	{
-		std::random_device rd;
 		int tid = omp_get_thread_num();
 	
-		std::mt19937 gen(rd() + tid);
+		std::seed_seq seed{
+    			static_cast<unsigned int>(semilla),
+    			static_cast<unsigned int>(paso),
+    			static_cast<unsigned int>(tid)
+			};
+	
+		std::mt19937 gen(seed);
 		std::uniform_real_distribution<double> distrib(0.0, 1.0);
 	
 	
 		#pragma omp for
-		for (std::pair<int, int>& carro : carros){
+		for (int k = 0; k < static_cast<int>(carros.size()); k++){
+		
+			std::pair<int, int>& carro = carros[k];
 		
 			int i = carro.first;
 			int velocidad = v(carro.second);
@@ -128,19 +142,4 @@ PYBIND11_MODULE(trafico, m){
 	
 	m.def("actualizar", &actualizar, "Actualizar la carretera y el flujo instantaneo.");
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
