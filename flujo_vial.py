@@ -43,7 +43,7 @@ def guardar_datos(cantidad, densidad_r, densidad_a, flujo_total):
 			densidad_r,
 			densidad_a,
 			flujo_total
-		])
+			])
 
 # Definir velocidad en lista con velocidad real
 
@@ -51,6 +51,19 @@ def velocidad_codificada(velocidad_real):
 	
 	velocidad_carretera = velocidad_real + 1
 	return velocidad_carretera
+
+# Calcular la velocidad promedio de la carretera
+
+def velocidad_promedio(carretera):
+	
+	velocidad = []
+
+	for carro in carretera:
+		if carro != 0:
+		
+			velocidad.append(carro - 1)
+			
+	return np.mean(velocidad)
 
 # Datos de simulación simultánea
 
@@ -93,23 +106,25 @@ if hilos <= 0:
 dt = 1.0
 t_final = 50*L
 t_relajacion = 10*L
-tiempos = []
+tiempos_snapshots = []
+tiempos_velocidades = []
 
 # Datos de snapshots
 
-intervalo_snapshot = 0
+intervalo_snapshot = 1
 snapshots = []
 
 # Datos de velocidades
 
 v_max = velocidad_codificada(5)
+velocidades = []
 
 # Datos de densidad y flujo
 
 densidad = cantidad_carros / L
 densidad_aproximada = 0
 flujo_total = 0
-T = 1000
+T = 3600
 medicion = 100
 flujo_instantaneo = 0
 
@@ -122,34 +137,48 @@ p = 0.5
 colormap = ["black", "red", "orangered", "orange", "yellow", "greenyellow", "lime"]
 colormap = ListedColormap(colormap)
 
-# Generación de autos de densidad constante (Carretera Circular)
+# Decidir tipo de flujo (0 = Circular | 1 = Abierto)
 
-posiciones = random.sample(range(len(carretera)), cantidad_carros)
+tipo_flujo = 0
 
-for posicion in posiciones:
-	carretera[posicion] = velocidad_codificada(0)
+if (tipo_flujo != 0) and (tipo_flujo != 1):
+	raise ValueError("tipo_flujo debe ser 0 o 1")
+
+# Generación de autos de densidad constante (Carretera Circular) tipo_flujo == 0
+
+if tipo_flujo == 0:
+
+	posiciones = random.sample(range(len(carretera)), cantidad_carros)
+
+	for posicion in posiciones:
+		carretera[posicion] = velocidad_codificada(0)
 
 t0 = time.perf_counter()
 
 for n in range(int(t_final/dt) + 1):
+	
+	# Generación de autos de densidad variable (Carretera Abierta) tipo_flujo == 1
+	
+	if tipo_flujo == 1:
+		if carretera[0] == 0:
+			carretera[0] = velocidad_codificada(0)
 		
-	#if carretera[0] == 0:
-		#carretera[0] = Carro(velocidad=0)
-		
-	#for m in range(len(carretera)-6,len(carretera)):
-		#if carretera[m] != 0:
-			#carretera[m] = 0
-		
-	#print(n)
+		for m in range(len(carretera)-6,len(carretera)):
+			if carretera[m] != 0:
+				carretera[m] = 0
 		
 	flujo_instantaneo = tf.actualizar(carretera, v_max, p, medicion, semilla, n, hilos)
 				
 	if (intervalo_snapshot != 0) and (n > t_relajacion) and (n % intervalo_snapshot == 0):
 			
 		snapshots.append(carretera.copy())
-		tiempos.append(n*dt)
+		tiempos_snapshots.append(n*dt)
 		
 	if t_relajacion < n <= t_relajacion + T:
+		
+		velocidades.append(velocidad_promedio(carretera)*20)
+		tiempos_velocidades.append(n*dt)
+		
 		if carretera[medicion] != 0:
 			densidad_aproximada += 1
 			
@@ -167,11 +196,13 @@ for i, snap in enumerate(snapshots):
 
 print("Semilla: ", semilla)
 
-print("Cantidad de carros: ", cantidad_carros)
+if tipo_flujo == 0:
+	print("Cantidad de carros: ", cantidad_carros)
 
 print("Tiempo: ",t1-t0)
 
-print("Densidad Real: ", densidad)
+if tipo_flujo == 0:
+	print("Densidad Real: ", densidad)
 
 print("Densidad Aproximada: ", densidad_aproximada/T)
 
@@ -198,7 +229,7 @@ if (intervalo_snapshot != 0) and (len(snapshots) > 0):
 
 	def animar(i):
 		linea.set_data([snapshots[i]])
-		ax.set_title(f"Tiempo: {tiempos[i]:.0f} s")
+		ax.set_title(f"Tiempo: {tiempos_snapshots[i]:.0f} s")
 		return [linea]
 		
 	ani = animation.FuncAnimation(
@@ -222,4 +253,12 @@ if (intervalo_snapshot != 0) and (len(snapshots) > 0):
 	plt.ylabel("Tiempo")
 
 	plt.show()
+
+plt.plot(tiempos_velocidades, velocidades)
+
+plt.xlabel("Tiempo")
+plt.ylabel("Velocidad")
+plt.grid(True)
+
+plt.show()
 
